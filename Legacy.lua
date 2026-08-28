@@ -39,8 +39,9 @@ AimMainSec:CreateToggle("Legitbot", Rayflare.Settings.Enabled, function(v)
     Window:Notify("Settings Changed", "Legitbot set to: " .. tostring(v), 3)
 end)
 
-AimMainSec:CreateKeybind("Trigger Key", Rayflare.Settings.Trigger.TriggerKey, function(key)
-    if key then 
+AimMainSec:CreateKeybind("Trigger Key", Rayflare.Settings.Trigger.TriggerKey, function(key, isPressed)
+    -- Fixed: Only notifies when the key is assigned, NOT when you press it
+    if key and not isPressed then 
         Rayflare.Settings.Trigger.TriggerKey = key 
         Window:Notify("Settings Changed", "Trigger Key bound to: " .. tostring(key.Name or key), 3)
     end
