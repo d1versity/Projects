@@ -12,7 +12,8 @@ Rayflare.Settings.TriggerBot = Rayflare.Settings.TriggerBot or {
     TriggerMode = "Hold",
     IsAiming = false,
     Delay = 0,
-    WallCheck = { Enabled = true }
+    TeamCheck = { Enabled = false },
+    WallCheck = { Enabled = false }
 }
 
 -- Configure Default States for Zeta
@@ -30,6 +31,16 @@ Zeta.Settings.HealthBar.Enabled = false
 -- Initialize Background Engines
 Rayflare:Load()
 Zeta:Load()
+
+-- Local Movement Settings for the UI Script
+local MovementSettings = {
+    BhopEnabled = false,
+    BhopSpeed = 30
+}
+
+local EnvSettings = {
+    NightModeEnabled = false
+}
 
 -- Absolute Force-Hide for Zeta's Default "Label" Drawings
 game:GetService("RunService").RenderStepped:Connect(function()
@@ -193,13 +204,31 @@ end)
 TriggerBotSec:CreateSlider("Trigger Delay", 0, 1000, math.floor(Rayflare.Settings.TriggerBot.Delay * 1000), function(v)
     Rayflare.Settings.TriggerBot.Delay = v / 1000
 end)
+TriggerBotSec:CreateToggle("Team Check", Rayflare.Settings.TriggerBot.TeamCheck.Enabled, function(v)
+    Rayflare.Settings.TriggerBot.TeamCheck.Enabled = v
+end)
 TriggerBotSec:CreateToggle("Wall Check", Rayflare.Settings.TriggerBot.WallCheck.Enabled, function(v)
     Rayflare.Settings.TriggerBot.WallCheck.Enabled = v
 end)
 
+-- ========================================== --
+--              TAB 3: MOVEMENT                 --
+-- ========================================== --
+local MovementTab = Window:CreateTab("Movement", "Person")
+
+local MovementSec = MovementTab:CreateSection("Bunny Hop", "Left")
+
+MovementSec:CreateToggle("Bunny Hop", MovementSettings.BhopEnabled, function(v)
+    MovementSettings.BhopEnabled = v
+end)
+
+MovementSec:CreateSlider("Bhop Speed", 16, 100, MovementSettings.BhopSpeed, function(v)
+    MovementSettings.BhopSpeed = v
+end)
+
 
 -- ========================================== --
---              TAB 3: VISUALS                  --
+--              TAB 4: VISUALS                  --
 -- ========================================== --
 local VisualsTab = Window:CreateTab("Visuals", "Eye")
 
@@ -246,7 +275,7 @@ ESPColorsSec:CreateColorPicker("Tracer Color", Zeta.Settings.Tracers.Color, func
 ESPColorsSec:CreateColorPicker("Head Circle Color", Zeta.Settings.Box.HeadCircle.Color, function(c) Zeta.Settings.Box.HeadCircle.Color = c end)
 
 -- ========================================== --
---            TAB 4: ENVIRONMENT              --
+--            TAB 5: ENVIRONMENT              --
 -- ========================================== --
 local EnvTab = Window:CreateTab("Environment", "Home")
 local EnvMainSec = EnvTab:CreateSection("Lighting", "Left")
@@ -257,14 +286,14 @@ local origAmbient = Lighting.Ambient
 local origOutdoorAmbient = Lighting.OutdoorAmbient
 
 EnvMainSec:CreateToggle("Night Mode", false, function(v)
+    EnvSettings.NightModeEnabled = v
     if v then
+        -- Save original lighting before turning it on
         origClockTime = Lighting.ClockTime
         origAmbient = Lighting.Ambient
         origOutdoorAmbient = Lighting.OutdoorAmbient
-        Lighting.ClockTime = 0
-        Lighting.Ambient = Color3.fromRGB(40, 40, 60)
-        Lighting.OutdoorAmbient = Color3.fromRGB(40, 40, 60)
     else
+        -- Restore when turned off
         Lighting.ClockTime = origClockTime
         Lighting.Ambient = origAmbient
         Lighting.OutdoorAmbient = origOutdoorAmbient
@@ -381,5 +410,82 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
         if isTriggerKey then
             StopRageMode()
         end
+    end
+end)
+
+-- LinearVelocity Constraint Overrider for Bhop (Destroys custom movement engine limits)
+local bhopAttachment = nil
+local bhopVelocity = nil
+
+local function cleanupBhop()
+    if bhopVelocity then bhopVelocity:Destroy(); bhopVelocity = nil end
+    if bhopAttachment then bhopAttachment:Destroy(); bhopAttachment = nil end
+end
+
+RunService.RenderStepped:Connect(function()
+    -- Force Persistent Night Mode
+    if EnvSettings.NightModeEnabled then
+        Lighting.ClockTime = 0
+        Lighting.Ambient = Color3.fromRGB(40, 40, 60)
+        Lighting.OutdoorAmbient = Color3.fromRGB(40, 40, 60)
+    end
+
+    if MovementSettings.BhopEnabled then
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChild("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        
+        if hum and hrp and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            
+            if not bhopAttachment or bhopAttachment.Parent ~= hrp then
+                if bhopAttachment then bhopAttachment:Destroy() end
+                bhopAttachment = Instance.new("Attachment")
+                bhopAttachment.Name = "BhopAttachment"
+                bhopAttachment.Parent = hrp
+            end
+            
+            if not bhopVelocity or bhopVelocity.Parent ~= hrp then
+                if bhopVelocity then bhopVelocity:Destroy() end
+                bhopVelocity = Instance.new("LinearVelocity")
+                bhopVelocity.Name = "BhopVelocity"
+                bhopVelocity.Attachment0 = bhopAttachment
+                bhopVelocity.ForceLimitMode = Enum.ForceLimitMode.PerAxis
+                bhopVelocity.MaxAxesForce = Vector3.new(9e9, 0, 9e9) -- Enforces X and Z speed, completely ignores Y
+                bhopVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
+                bhopVelocity.Parent = hrp
+            end
+            
+            bhopVelocity.Enabled = true
+
+            -- Direct bypass to the Roblox Humanoid for jumping
+            local state = hum:GetState()
+            local isGrounded = (hum.FloorMaterial ~= Enum.Material.Air) or (state == Enum.HumanoidStateType.Landed) or (state == Enum.HumanoidStateType.Running)
+            
+            if isGrounded then
+                -- Tells the game's actual engine to jump with its natural height/gravity
+                hum.Jump = true
+            end
+            
+            -- Manual Vector calculation to bypass custom movement limitations
+            local camCFrame = Camera.CFrame
+            local flatLook = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z).Unit
+            local flatRight = Vector3.new(camCFrame.RightVector.X, 0, camCFrame.RightVector.Z).Unit
+            
+            local moveDir = Vector3.new(0, 0, 0)
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + flatLook end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - flatLook end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - flatRight end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + flatRight end
+            
+            if moveDir.Magnitude > 0 then
+                bhopVelocity.VectorVelocity = moveDir.Unit * MovementSettings.BhopSpeed
+            else
+                bhopVelocity.VectorVelocity = Vector3.zero
+            end
+        else
+            cleanupBhop()
+        end
+    else
+        cleanupBhop()
     end
 end)
