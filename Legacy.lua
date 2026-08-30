@@ -32,14 +32,16 @@ Zeta.Settings.HealthBar.Enabled = false
 Rayflare:Load()
 Zeta:Load()
 
--- Local Movement Settings for the UI Script
+-- Local Settings for the UI Script
 local MovementSettings = {
     BhopEnabled = false,
     BhopSpeed = 30
 }
 
 local EnvSettings = {
-    NightModeEnabled = false
+    NightModeEnabled = false,
+    FOVEnabled = false,
+    FOV = 80
 }
 
 -- Absolute Force-Hide for Zeta's Default "Label" Drawings
@@ -63,6 +65,8 @@ end)
 -- ========================================================================= --
 
 local Window = WindUI:CreateWindow("Legacy")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
 -- ========================================== --
 --               TAB 1: RAGE                  --
@@ -85,9 +89,6 @@ RageMainSec:CreateKeybind("Instant Kill Key", nil, function(key, isPressed)
         RageSettings.InstantKillKey = key 
     end
 end)
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
 local function GetEnemyList()
     local options = {"None", "All"}
@@ -134,41 +135,32 @@ end
 local LegitbotTab = Window:CreateTab("Legitbot", "Crosshair")
 
 local AimMainSec = LegitbotTab:CreateSection("Main Settings", "Left")
-
 AimMainSec:CreateToggle("Legitbot", Rayflare.Settings.Enabled, function(v)
     Rayflare.Settings.Enabled = v
 end)
-
 AimMainSec:CreateKeybind("Trigger Key", Rayflare.Settings.Trigger.TriggerKey, function(key, isPressed)
     if key and not isPressed then 
         Rayflare.Settings.Trigger.TriggerKey = key 
     end
 end)
-
 AimMainSec:CreateSlider("Smoothness", 0, 20, Rayflare.Settings.Smoothness, function(v)
     Rayflare.Settings.Smoothness = v
 end)
-
 AimMainSec:CreateDropdown("Aim Part", {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso"}, Rayflare.Settings.AimPart, function(v)
     Rayflare.Settings.AimPart = v
 end)
-
 AimMainSec:CreateDropdown("Trigger Mode", {"Hold", "Toggle", "Always"}, Rayflare.Settings.Trigger.TriggerMode, function(v)
     Rayflare.Settings.Trigger.TriggerMode = v
 end)
-
 AimMainSec:CreateDropdown("Aim Type", {"Camera", "Cursor"}, Rayflare.Settings.AimType, function(v)
     Rayflare.Settings.AimType = v
 end)
-
 AimMainSec:CreateToggle("Team Check", Rayflare.Settings.TeamCheck.Enabled, function(v)
     Rayflare.Settings.TeamCheck.Enabled = v
 end)
-
 AimMainSec:CreateToggle("Wall Check", Rayflare.Settings.WallCheck.Enabled, function(v)
     Rayflare.Settings.WallCheck.Enabled = v
 end)
-
 
 local AimFOVSec = LegitbotTab:CreateSection("Field of View", "Right")
 AimFOVSec:CreateToggle("Show FOV", Rayflare.Settings.FOV.Visible, function(v)
@@ -184,9 +176,7 @@ AimFOVSec:CreateColorPicker("FOV Color", Rayflare.Settings.FOV.Color, function(c
     Rayflare.Settings.FOV.Color = c
 end)
 
-
 local TriggerBotSec = LegitbotTab:CreateSection("Triggerbot", "Right")
-
 TriggerBotSec:CreateToggle("Triggerbot", Rayflare.Settings.TriggerBot.Enabled, function(v)
     Rayflare.Settings.TriggerBot.Enabled = v
 end)
@@ -217,15 +207,12 @@ end)
 local MovementTab = Window:CreateTab("Movement", "Person")
 
 local MovementSec = MovementTab:CreateSection("Bunny Hop", "Left")
-
 MovementSec:CreateToggle("Bunny Hop", MovementSettings.BhopEnabled, function(v)
     MovementSettings.BhopEnabled = v
 end)
-
 MovementSec:CreateSlider("Bhop Speed", 16, 100, MovementSettings.BhopSpeed, function(v)
     MovementSettings.BhopSpeed = v
 end)
-
 
 -- ========================================== --
 --              TAB 4: VISUALS                  --
@@ -248,24 +235,12 @@ ESPMainSec:CreateToggle("Team Check", false, function(v)
 end)
 
 local ESPElementsSec = VisualsTab:CreateSection("ESP Elements", "Left")
-ESPElementsSec:CreateToggle("Chams", Zeta.Settings.Chams.Enabled, function(v)
-    Zeta.Settings.Chams.Enabled = v
-end)
-ESPElementsSec:CreateToggle("Box", Zeta.Settings.Box.Enabled, function(v)
-    Zeta.Settings.Box.Enabled = v
-end)
-ESPElementsSec:CreateToggle("Username", Zeta.Settings.Text.Enabled, function(v)
-    Zeta.Settings.Text.Enabled = v
-end)
-ESPElementsSec:CreateToggle("Tracers", Zeta.Settings.Tracers.Enabled, function(v)
-    Zeta.Settings.Tracers.Enabled = v
-end)
-ESPElementsSec:CreateToggle("Head Circle", Zeta.Settings.Box.HeadCircle.Enabled, function(v)
-    Zeta.Settings.Box.HeadCircle.Enabled = v
-end)
-ESPElementsSec:CreateToggle("Health Bar", Zeta.Settings.HealthBar.Enabled, function(v)
-    Zeta.Settings.HealthBar.Enabled = v
-end)
+ESPElementsSec:CreateToggle("Chams", Zeta.Settings.Chams.Enabled, function(v) Zeta.Settings.Chams.Enabled = v end)
+ESPElementsSec:CreateToggle("Box", Zeta.Settings.Box.Enabled, function(v) Zeta.Settings.Box.Enabled = v end)
+ESPElementsSec:CreateToggle("Username", Zeta.Settings.Text.Enabled, function(v) Zeta.Settings.Text.Enabled = v end)
+ESPElementsSec:CreateToggle("Tracers", Zeta.Settings.Tracers.Enabled, function(v) Zeta.Settings.Tracers.Enabled = v end)
+ESPElementsSec:CreateToggle("Head Circle", Zeta.Settings.Box.HeadCircle.Enabled, function(v) Zeta.Settings.Box.HeadCircle.Enabled = v end)
+ESPElementsSec:CreateToggle("Health Bar", Zeta.Settings.HealthBar.Enabled, function(v) Zeta.Settings.HealthBar.Enabled = v end)
 
 local ESPColorsSec = VisualsTab:CreateSection("Colors", "Right")
 ESPColorsSec:CreateColorPicker("Chams Color", Zeta.Settings.Chams.Color, function(c) Zeta.Settings.Chams.Color = c end)
@@ -275,11 +250,75 @@ ESPColorsSec:CreateColorPicker("Tracer Color", Zeta.Settings.Tracers.Color, func
 ESPColorsSec:CreateColorPicker("Head Circle Color", Zeta.Settings.Box.HeadCircle.Color, function(c) Zeta.Settings.Box.HeadCircle.Color = c end)
 
 -- ========================================== --
---            TAB 5: ENVIRONMENT              --
+--          TAB 5: SKIN CHANGER               --
+-- ========================================== --
+local SkinTab = Window:CreateTab("Skin Changer", "Code")
+
+-- Updated ApplySkin function to handle multiple team folders
+local function ApplySkin(teamFolders, weaponName, skinName)
+    local skinFolder = LocalPlayer:FindFirstChild("SkinFolder")
+    if not skinFolder then
+        skinFolder = Instance.new("Folder")
+        skinFolder.Name = "SkinFolder"
+        skinFolder.Parent = LocalPlayer
+    end
+    
+    for _, teamFolderName in ipairs(teamFolders) do
+        local teamFolder = skinFolder:FindFirstChild(teamFolderName)
+        if not teamFolder then
+            teamFolder = Instance.new("Folder")
+            teamFolder.Name = teamFolderName
+            teamFolder.Parent = skinFolder
+        end
+        
+        local weaponVal = teamFolder:FindFirstChild(weaponName)
+        if not weaponVal then
+            weaponVal = Instance.new("StringValue")
+            weaponVal.Name = weaponName
+            weaponVal.Parent = teamFolder
+        end
+        
+        weaponVal.Value = skinName
+    end
+end
+
+local PistolsSec = SkinTab:CreateSection("PISTOLS", "Left")
+PistolsSec:CreateDropdown("Glock-18", {"Stock", "Desert Camo", "Day Dreamer", "Wetland", "Anubis", "Midnight Tiger", "Gravestomper", "Tarnish", "Rush", "Angler", "Spacedust", "Money Maker", "RSL", "Biotrip", "Underwater", "Hallows", "BloxersClub", "Lantern", "Exoskeleton", "Alpine", "Royal Crimson", "Chocolatier", "Independence", "Overdrive"}, "Stock", function(v)
+    ApplySkin({"TFolder"}, "Glock", v)
+end)
+PistolsSec:CreateDropdown("USP-S", {"Stock", "Skull", "Yellowbelly", "Crimson", "Jade Dream", "Racing", "Frostbite", "Nighttown", "Paradise", "Dizzy", "Kraken", "Worlds Away", "Unseenremake", "Holiday", "Survivor", "BloxersClub", "Gingerbread", "Blossom", "Unseen", "Vision", "Infantry", "Overdrive"}, "Stock", function(v)
+    ApplySkin({"CTFolder"}, "USP", v)
+end)
+PistolsSec:CreateDropdown("Deagle", {"Stock", "Glittery", "Grim", "Weeb", "Krystallos", "Honor-bound", "TC", "Xmas", "Blossom", "Cool Blue", "Survivor", "Ababa", "Heat", "Headwind", "Independence", "Racer", "Pumpkin Buster", "Skin Committee", "DropX", "Crystal", "Blue Fur", "Cold Truth", "BloxersClub", "Guapo", "Regal Eclipse", "Demon Eyes", "Royal Guard", "Industrial", "Engraved", "Blue Rail", "Cotton Tail", "Torque Hare", "Volcan", "Torque Hare P2", "Zeus"}, "Stock", function(v)
+    ApplySkin({"CTFolder", "TFolder"}, "DesertEagle", v)
+end)
+
+local RiflesSec = SkinTab:CreateSection("Rifles", "Right")
+RiflesSec:CreateDropdown("AK-47", {"Stock", "Hallows", "Ace", "Code Orange", "Clown", "Variant Camo", "Eve", "VAV", "Quantum", "Hypersonic", "Mean Green", "Bloodboom", "Elf", "Skin Committee", "Patch", "Outlaws", "Gifted", "Ugly Sweater", "Secret Santa", "Precision", "Outrunner", "Godess", "Maker", "Ghost", "Glo", "Survivor", "Shooting Star", "Halo", "Inversion", "Plated", "Quicktime", "Yltude", "Trinity", "Toxic Nitro", "Scythe", "Neonline", "Galaxy Corpse", "Weeb", "Super Weeb", "BloxersClub", "Jester", "Spooky", "Moon", "Lil Tim", "Iron Garden", "Maxal", "Kimura", "Bloom", "Torque Hare", "Sovereign", "Torque Hare P2", "Revolution"}, "Stock", function(v)
+    ApplySkin({"TFolder"}, "AK47", v)
+end)
+RiflesSec:CreateDropdown("M4A1-S", {"Stock", "Toucan", "Animatic", "Desert Camo", "Wastelander", "BloxersClub", "Tecnician", "Impulse", "Burning", "Lunar", "Necropolis", "Jester", "Nightmare", "Heavens Gate", "Star Camo", "Snowman", "RacerX", "Kimura", "Street Hop", "Violet Circuits", "Warped"}, "Stock", function(v)
+    ApplySkin({"CTFolder"}, "M4A1", v)
+end)
+RiflesSec:CreateDropdown("M4A4", {"Stock", "Devil", "Pinkvision", "Desert Camo", "BOT[S]", "Precision", "Candyskull", "Sleigher", "Toy Soldier", "Endline", "Pondside", "Ice Cap", "Pinkie", "Racer", "Stardust", "King", "Moonwalker", "RayTrack", "Mistletoe", "Delinquent", "Quicktime", "Jester", "Darkness", "Agony", "Rosebite", "Flashy Ride", "Pyros"}, "Stock", function(v)
+    ApplySkin({"CTFolder"}, "M4A4", v)
+end)
+RiflesSec:CreateDropdown("SG 553", {"Stock", "Yltude", "Knighthood", "Variant Camo", "Magma", "DropX", "Dummy", "Kitty Cat", "Drop-Out", "Control", "NR8", "Volcanis", "Gilded Amore", "Electi"}, "Stock", function(v)
+    ApplySkin({"TFolder"}, "SG", v)
+end)
+RiflesSec:CreateDropdown("SSG 08", {"Stock", "Xmas", "Coffin Biter", "Railgun", "Hellborn", "Hot Cocoa", "Theory", "Pulse", "Monstruo", "Flowing Mists", "Neon Regulation", "Posh", "Darkness", "Lunar", "Aurora", "Choco", "Fractured"}, "Stock", function(v)
+    ApplySkin({"CTFolder", "TFolder"}, "Scout", v)
+end)
+RiflesSec:CreateDropdown("AWP", {"Stock", "Grepkin", "Instinct", "Nerf", "JTF2", "Difference", "Weeb", "Pink Vision", "Desert Camo", "BloxersClub", "Lunar", "Elfspire", "Coffin Biter", "Pear Tree", "Northern Lights", "Racer", "Forever", "Blastech", "Abaddon", "Retroactive", "Pinkie", "Autumness", "Venomus", "Hika", "Silence", "Kumanjayi", "Dragon", "Illusion", "Regina", "Quicktime", "Toxic Nitro", "Darkness", "Oriental", "Circuits", "Bloodborne", "Pumpkin Piercer", "Cemetery", "Cybertech", "Roses", "Grim", "Spring", "Patriot"}, "Stock", function(v)
+    ApplySkin({"CTFolder", "TFolder"}, "AWP", v)
+end)
+
+-- ========================================== --
+--            TAB 6: ENVIRONMENT              --
 -- ========================================== --
 local EnvTab = Window:CreateTab("Environment", "Home")
-local EnvMainSec = EnvTab:CreateSection("Lighting", "Left")
 
+local EnvMainSec = EnvTab:CreateSection("Lighting", "Left")
 local Lighting = game:GetService("Lighting")
 local origClockTime = Lighting.ClockTime
 local origAmbient = Lighting.Ambient
@@ -288,18 +327,27 @@ local origOutdoorAmbient = Lighting.OutdoorAmbient
 EnvMainSec:CreateToggle("Night Mode", false, function(v)
     EnvSettings.NightModeEnabled = v
     if v then
-        -- Save original lighting before turning it on
         origClockTime = Lighting.ClockTime
         origAmbient = Lighting.Ambient
         origOutdoorAmbient = Lighting.OutdoorAmbient
     else
-        -- Restore when turned off
         Lighting.ClockTime = origClockTime
         Lighting.Ambient = origAmbient
         Lighting.OutdoorAmbient = origOutdoorAmbient
     end
 end)
 
+local EnvFOVSec = EnvTab:CreateSection("Camera", "Right")
+EnvFOVSec:CreateToggle("Enable Custom FOV", false, function(v)
+    EnvSettings.FOVEnabled = v
+end)
+
+EnvFOVSec:CreateSlider("Field of View", 60, 120, 80, function(v)
+    EnvSettings.FOV = v
+    if EnvSettings.FOVEnabled and Workspace.CurrentCamera then
+        Workspace.CurrentCamera.FieldOfView = v
+    end
+end)
 
 -- ========================================== --
 --        BACKGROUND LOGIC CONTROLLERS        --
@@ -413,7 +461,6 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
     end
 end)
 
--- LinearVelocity Constraint Overrider for Bhop (Destroys custom movement engine limits)
 local bhopAttachment = nil
 local bhopVelocity = nil
 
@@ -423,11 +470,18 @@ local function cleanupBhop()
 end
 
 RunService.RenderStepped:Connect(function()
-    -- Force Persistent Night Mode
+    -- Forcefully lock Custom FOV if enabled
+    if EnvSettings.FOVEnabled and Workspace.CurrentCamera then
+        if Workspace.CurrentCamera.FieldOfView ~= EnvSettings.FOV then
+            Workspace.CurrentCamera.FieldOfView = EnvSettings.FOV
+        end
+    end
+
+    -- Force Persistent Brighter Night Mode
     if EnvSettings.NightModeEnabled then
         Lighting.ClockTime = 0
-        Lighting.Ambient = Color3.fromRGB(40, 40, 60)
-        Lighting.OutdoorAmbient = Color3.fromRGB(40, 40, 60)
+        Lighting.Ambient = Color3.fromRGB(130, 130, 145)
+        Lighting.OutdoorAmbient = Color3.fromRGB(110, 110, 125)
     end
 
     if MovementSettings.BhopEnabled then
@@ -450,23 +504,20 @@ RunService.RenderStepped:Connect(function()
                 bhopVelocity.Name = "BhopVelocity"
                 bhopVelocity.Attachment0 = bhopAttachment
                 bhopVelocity.ForceLimitMode = Enum.ForceLimitMode.PerAxis
-                bhopVelocity.MaxAxesForce = Vector3.new(9e9, 0, 9e9) -- Enforces X and Z speed, completely ignores Y
+                bhopVelocity.MaxAxesForce = Vector3.new(9e9, 0, 9e9)
                 bhopVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
                 bhopVelocity.Parent = hrp
             end
             
             bhopVelocity.Enabled = true
 
-            -- Direct bypass to the Roblox Humanoid for jumping
             local state = hum:GetState()
             local isGrounded = (hum.FloorMaterial ~= Enum.Material.Air) or (state == Enum.HumanoidStateType.Landed) or (state == Enum.HumanoidStateType.Running)
             
             if isGrounded then
-                -- Tells the game's actual engine to jump with its natural height/gravity
                 hum.Jump = true
             end
             
-            -- Manual Vector calculation to bypass custom movement limitations
             local camCFrame = Camera.CFrame
             local flatLook = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z).Unit
             local flatRight = Vector3.new(camCFrame.RightVector.X, 0, camCFrame.RightVector.Z).Unit
