@@ -338,7 +338,7 @@ EnvMainSec:CreateToggle("Night Mode", false, function(v)
 end)
 
 local EnvFOVSec = EnvTab:CreateSection("Camera", "Right")
-EnvFOVSec:CreateToggle("Enable Custom FOV", false, function(v)
+EnvFOVSec:CreateToggle("FOV Changer", false, function(v)
     EnvSettings.FOVEnabled = v
 end)
 
