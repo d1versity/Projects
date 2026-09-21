@@ -5,6 +5,7 @@ local Zeta     = loadstring(game:HttpGet("https://raw.githubusercontent.com/d1ve
 
 -- Configure Default States for Rayflare
 Rayflare.Settings.FOV.Radius = 50
+Rayflare.Settings.Flick = { Enabled = false } -- Explicitly set to false by default
 Rayflare.Settings.TriggerBot = Rayflare.Settings.TriggerBot or {
     Enabled = false,
     Mode = "Camera",
@@ -44,6 +45,18 @@ local EnvSettings = {
     FOV = 80
 }
 
+local FreecamSettings = {
+    MasterSwitch = false,
+    Active = false,
+    Speed = 50,
+    Keybind = nil,
+    Pitch = 0,
+    Yaw = 0,
+    Pos = Vector3.zero,
+    SavedCFrame = nil,
+    SavedCameraCFrame = nil
+}
+
 -- Absolute Force-Hide for Zeta's Default "Label" Drawings
 game:GetService("RunService").RenderStepped:Connect(function()
     if Zeta and Zeta.Cache then
@@ -67,6 +80,7 @@ end)
 local Window = WindUI:CreateWindow("Legacy")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
 
 -- ========================================== --
 --               TAB 1: RAGE                  --
@@ -161,6 +175,9 @@ end)
 AimMainSec:CreateToggle("Wall Check", Rayflare.Settings.WallCheck.Enabled, function(v)
     Rayflare.Settings.WallCheck.Enabled = v
 end)
+AimMainSec:CreateToggle("Flick", Rayflare.Settings.Flick.Enabled, function(v)
+    Rayflare.Settings.Flick.Enabled = v
+end)
 
 local AimFOVSec = LegitbotTab:CreateSection("Field of View", "Right")
 AimFOVSec:CreateToggle("Show FOV", Rayflare.Settings.FOV.Visible, function(v)
@@ -254,7 +271,6 @@ ESPColorsSec:CreateColorPicker("Head Circle Color", Zeta.Settings.Box.HeadCircle
 -- ========================================== --
 local SkinTab = Window:CreateTab("Skin Changer", "Code")
 
--- Updated ApplySkin function to handle multiple team folders
 local function ApplySkin(teamFolders, weaponName, skinName)
     local skinFolder = LocalPlayer:FindFirstChild("SkinFolder")
     if not skinFolder then
@@ -349,14 +365,92 @@ EnvFOVSec:CreateSlider("Field of View", 60, 120, 80, function(v)
     end
 end)
 
+-- Freecam Functionality
+local UserInputService = game:GetService("UserInputService")
+
+local function ToggleFreecam(state)
+    FreecamSettings.Active = state
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
+    local currentCam = Workspace.CurrentCamera
+    
+    if state then
+        -- Save original camera CFrame before manipulating anything
+        FreecamSettings.SavedCameraCFrame = currentCam.CFrame
+        
+        -- Initialize orientation and position when turning on
+        local rx, ry, rz = currentCam.CFrame:ToEulerAnglesYXZ()
+        FreecamSettings.Pitch = rx
+        FreecamSettings.Yaw = ry
+        FreecamSettings.Pos = currentCam.CFrame.Position
+        
+        currentCam.CameraType = Enum.CameraType.Scriptable
+        currentCam.CameraSubject = nil -- Decouple to prevent physics fighting
+        
+        -- Lock mouse for immediate first-person style control
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+        
+        if hrp then
+            FreecamSettings.SavedCFrame = hrp.CFrame
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            hrp.Anchored = true
+        end
+        if hum then
+            hum.AutoRotate = false
+        end
+    else
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+        
+        if hum then
+            currentCam.CameraSubject = hum
+            hum.AutoRotate = true
+        end
+        if hrp then
+            hrp.Anchored = false
+            FreecamSettings.SavedCFrame = nil
+        end
+        
+        currentCam.CameraType = Enum.CameraType.Custom
+        
+        -- Restore original camera CFrame directly after resetting properties
+        if FreecamSettings.SavedCameraCFrame then
+            currentCam.CFrame = FreecamSettings.SavedCameraCFrame
+            FreecamSettings.SavedCameraCFrame = nil
+        end
+    end
+end
+
+local EnvFreecamSec = EnvTab:CreateSection("Freecam", "Left")
+EnvFreecamSec:CreateToggle("Freecam", false, function(v)
+    FreecamSettings.MasterSwitch = v
+    if not v and FreecamSettings.Active then
+        ToggleFreecam(false)
+    end
+end)
+
+EnvFreecamSec:CreateKeybind("Freecam Keybind", nil, function(key)
+    -- Simply record the key, UserInputService handles the toggling
+    FreecamSettings.Keybind = key
+end)
+
+EnvFreecamSec:CreateSlider("Freecam Speed", 10, 200, 50, function(v)
+    FreecamSettings.Speed = v
+end)
+
+-- Safely reset Freecam if the player dies/respawns
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    if FreecamSettings.Active then
+        ToggleFreecam(false)
+    end
+end)
+
 -- ========================================== --
 --        BACKGROUND LOGIC CONTROLLERS        --
 -- ========================================== --
 
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local Camera = Workspace.CurrentCamera
 
 local isExecutingRage = false
 local rageFollowConnection = nil
@@ -374,18 +468,44 @@ local function StopRageMode()
         rageFollowConnection = nil
     end
     
-    Camera.CameraType = originalCamType
-    Camera.CameraSubject = originalSubject
+    local currentCam = Workspace.CurrentCamera
+    if not FreecamSettings.Active then
+        currentCam.CameraType = originalCamType
+        currentCam.CameraSubject = originalSubject
+    end
+    
     if originalCamCFrame then
-        Camera.CFrame = originalCamCFrame
+        currentCam.CFrame = originalCamCFrame
     end
     
     activeRageTargets = {}
 end
 
+UserInputService.InputChanged:Connect(function(input, gameProcessed)
+    -- Freecam Mouse Look System
+    if FreecamSettings.Active and input.UserInputType == Enum.UserInputType.MouseMovement then
+        -- Force the lock to ensure we capture raw mouse delta continuously
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+        
+        local delta = input.Delta
+        FreecamSettings.Yaw = FreecamSettings.Yaw - math.rad(delta.X) * 0.5
+        FreecamSettings.Pitch = FreecamSettings.Pitch - math.rad(delta.Y) * 0.5
+        FreecamSettings.Pitch = math.clamp(FreecamSettings.Pitch, -math.rad(89), math.rad(89))
+    end
+end)
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
+    -- Freecam Input Check
+    if FreecamSettings.MasterSwitch and FreecamSettings.Keybind then
+        local isFreecamKey = (input.UserInputType == FreecamSettings.Keybind) or (input.KeyCode == FreecamSettings.Keybind)
+        if isFreecamKey then
+            ToggleFreecam(not FreecamSettings.Active)
+        end
+    end
+    
+    -- Rage Input Check
     if RageSettings.InstantKill and RageSettings.InstantKillKey then
         local isTriggerKey = (input.UserInputType == RageSettings.InstantKillKey) or (input.KeyCode == RageSettings.InstantKillKey)
         
@@ -417,15 +537,16 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 local baseHRP = baseTarget:FindFirstChild("HumanoidRootPart")
                 local baseHead = baseTarget:FindFirstChild("Head")
                 
-                originalCamType = Camera.CameraType
-                originalSubject = Camera.CameraSubject
-                originalCamCFrame = Camera.CFrame
-                Camera.CameraType = Enum.CameraType.Scriptable
+                local currentCam = Workspace.CurrentCamera
+                originalCamType = currentCam.CameraType
+                originalSubject = currentCam.CameraSubject
+                originalCamCFrame = currentCam.CFrame
+                currentCam.CameraType = Enum.CameraType.Scriptable
                 
                 rageFollowConnection = RunService.RenderStepped:Connect(function()
                     if baseHead and baseHead.Parent and baseHRP and baseHRP.Parent then
                         local camPos = baseHead.CFrame * CFrame.new(0, 0, -4)
-                        Camera.CFrame = CFrame.lookAt(camPos.Position, baseHead.Position)
+                        Workspace.CurrentCamera.CFrame = CFrame.lookAt(camPos.Position, baseHead.Position)
                         
                         if RageSettings.Target == "All" then
                             for _, char in ipairs(activeRageTargets) do
@@ -469,7 +590,45 @@ local function cleanupBhop()
     if bhopAttachment then bhopAttachment:Destroy(); bhopAttachment = nil end
 end
 
-RunService.RenderStepped:Connect(function()
+RunService.RenderStepped:Connect(function(deltaTime)
+    -- Freecam Movement and Character Locking Logic
+    if FreecamSettings.Active then
+        local currentCam = Workspace.CurrentCamera
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        
+        -- Force Character to stay completely frozen at saved coordinates
+        if hrp and FreecamSettings.SavedCFrame then
+            hrp.CFrame = FreecamSettings.SavedCFrame
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+        end
+        
+        -- Assemble rotation from Yaw and Pitch
+        local camRotation = CFrame.fromEulerAnglesYXZ(FreecamSettings.Pitch, FreecamSettings.Yaw, 0)
+        
+        local movement = Vector3.zero
+        local forward = camRotation.LookVector
+        local right = camRotation.RightVector
+        local up = Vector3.new(0, 1, 0)
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then movement = movement + forward end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then movement = movement - forward end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then movement = movement - right end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then movement = movement + right end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then movement = movement + up end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then movement = movement - up end
+        
+        if movement.Magnitude > 0 then
+            -- Safe Delta limits physics anomalies/lags throwing the camera out of bounds
+            local safeDelta = math.min(deltaTime, 0.1)
+            FreecamSettings.Pos = FreecamSettings.Pos + (movement.Unit * FreecamSettings.Speed * safeDelta)
+        end
+        
+        -- Override CFrame directly from custom vectors (ignores wall collision)
+        currentCam.CFrame = CFrame.new(FreecamSettings.Pos) * camRotation
+    end
+
     -- Forcefully lock Custom FOV if enabled
     if EnvSettings.FOVEnabled and Workspace.CurrentCamera then
         if Workspace.CurrentCamera.FieldOfView ~= EnvSettings.FOV then
@@ -484,7 +643,7 @@ RunService.RenderStepped:Connect(function()
         Lighting.OutdoorAmbient = Color3.fromRGB(110, 110, 125)
     end
 
-    if MovementSettings.BhopEnabled then
+    if MovementSettings.BhopEnabled and not FreecamSettings.Active then
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChild("Humanoid")
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -518,9 +677,9 @@ RunService.RenderStepped:Connect(function()
                 hum.Jump = true
             end
             
-            local camCFrame = Camera.CFrame
-            local flatLook = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z).Unit
-            local flatRight = Vector3.new(camCFrame.RightVector.X, 0, camCFrame.RightVector.Z).Unit
+            local currentCam = Workspace.CurrentCamera
+            local flatLook = Vector3.new(currentCam.CFrame.LookVector.X, 0, currentCam.CFrame.LookVector.Z).Unit
+            local flatRight = Vector3.new(currentCam.CFrame.RightVector.X, 0, currentCam.CFrame.RightVector.Z).Unit
             
             local moveDir = Vector3.new(0, 0, 0)
             if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + flatLook end
